@@ -1,4 +1,4 @@
-﻿using System;
+﻿    using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,19 +7,82 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ContractMonthlyClaimSystem2.Data;
 using ContractMonthlyClaimSystem2.Models;
+using Microsoft.AspNetCore.Authorization;
+using System.Data;
 
 namespace ContractMonthlyClaimSystem2.Controllers
 {
     public class ClaimsController : Controller
     {
         private readonly ContractMonthlyClaimSystem2Context _context;
+        //private readonly ApplicationDbContext _context;
+        private readonly IWebHostEnvironment _environment;
 
-        public ClaimsController(ContractMonthlyClaimSystem2Context context)
+        public ClaimsController(ContractMonthlyClaimSystem2Context context, IWebHostEnvironment environment)
         {
             _context = context;
+            _environment = environment;
         }
 
-        // GET: Claims
+        // GET: Claim/Track/5
+        public async Task<IActionResult> Track(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var claim = await _context.Claim
+                .FirstOrDefaultAsync(m => m.Id == id);
+            if (claim == null)
+            {
+                return NotFound();
+            }
+
+            return View(claim);
+        }
+
+        // POST: Claim/UpdateStatus/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "ProgrammeCoordinator,AcademicManager")]
+        public async Task<IActionResult> UpdateStatus(int id, ClaimStatus newStatus)
+        {
+            var claim = await _context.Claim.FindAsync(id);
+            if (claim == null)
+            {
+                return NotFound();
+            }
+
+            claim.Status = newStatus;
+            claim.LastUpdated = DateTime.Now;
+            claim.UpdatedBy = User.Identity?.Name ?? "Unknown";
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!ClaimExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return RedirectToAction(nameof(Verify));
+        }
+
+        private bool ClaimExists(int id)
+        {
+            return _context.Claim.Any(e => e.Id == id);
+        }
+
+        // GET: Claim
         public async Task<IActionResult> Index()
         {
               return _context.Claim != null ? 
@@ -27,7 +90,7 @@ namespace ContractMonthlyClaimSystem2.Controllers
                           Problem("Entity set 'ContractMonthlyClaimSystem2Context.Claim'  is null.");
         }
 
-        // GET: Claims/Details/5
+        // GET: Claim/Details/5
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null || _context.Claim == null)
@@ -45,15 +108,14 @@ namespace ContractMonthlyClaimSystem2.Controllers
             return View(claim);
         }
 
-        // GET: Claims/Create
+        // GET: Claim/Create
         public IActionResult Create()
         {
             return View();
         }
 
-        // POST: Claims/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        // POST: Claim/Create
+        // To protect from overposting attacks, enable the specific properties you want to bind to
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,LecturerId,DateSubmitted,HoursWorked,HourlyRate,AdditionalNotes,Status,SupportingDocumentPath")] Claim claim)
@@ -67,7 +129,7 @@ namespace ContractMonthlyClaimSystem2.Controllers
             return View(claim);
         }
 
-        // GET: Claims/Edit/5
+        // GET: Claim/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null || _context.Claim == null)
@@ -83,9 +145,8 @@ namespace ContractMonthlyClaimSystem2.Controllers
             return View(claim);
         }
 
-        // POST: Claims/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        // POST: Claim/Edit/5
+        // To protect from overposting attacks, enable the specific properties you want to bind to
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("Id,LecturerId,DateSubmitted,HoursWorked,HourlyRate,AdditionalNotes,Status,SupportingDocumentPath")] Claim claim)
@@ -118,7 +179,7 @@ namespace ContractMonthlyClaimSystem2.Controllers
             return View(claim);
         }
 
-        // GET: Claims/Delete/5
+        // GET: Claim/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null || _context.Claim == null)
@@ -136,7 +197,7 @@ namespace ContractMonthlyClaimSystem2.Controllers
             return View(claim);
         }
 
-        // POST: Claims/Delete/5
+        // POST: Claim/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
@@ -155,9 +216,13 @@ namespace ContractMonthlyClaimSystem2.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        private bool ClaimExists(int id)
+        public async Task<IActionResult> Verify()
         {
-          return (_context.Claim?.Any(e => e.Id == id)).GetValueOrDefault();
+            var pendingClaims = await _context.Claim
+                .Where(c => c.Status == ClaimStatus.Submitted || c.Status == ClaimStatus.UnderReview)
+                .ToListAsync();
+            return View(pendingClaims);
         }
+
     }
 }

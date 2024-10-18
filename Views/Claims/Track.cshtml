@@ -1,0 +1,39 @@
+﻿@model Claim
+
+@{
+    ViewData["Title"] = "Track Claim";
+}
+
+<h2>Claim Status Tracking</h2>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Claim #@Model.Id</h5>
+        <p class="card-text">Submitted by: @Model.LecturerId on @Model.DateSubmitted.ToShortDateString()</p>
+        <p class="card-text">Current Status: <strong>@Model.Status</strong></p>
+        <p class="card-text">Last Updated: @(Model.LastUpdated?.ToShortDateString() ?? "N/A") by @(Model.UpdatedBy ?? "N/A")</p>
+
+        <div class="progress mt-4">
+            @{
+                int progressPercentage = Model.Status switch
+                {
+                    ClaimStatus.Submitted => 20,
+                    ClaimStatus.UnderReview => 40,
+                    ClaimStatus.ApprovedByCoordinator => 60,
+                    ClaimStatus.ApprovedByManager => 80,
+                    ClaimStatus.Settled => 100,
+                    _ => 0
+                };
+            }
+            <div class="progress-bar" role="progressbar" style="width: @progressPercentage%;" aria-valuenow="@progressPercentage" aria-valuemin="0" aria-valuemax="100">@progressPercentage%</div>
+        </div>
+
+        <ul class="list-group mt-4">
+            <li class="list-group-item @(Model.Status >= ClaimStatus.Submitted ? "list-group-item-success" : "")">Submitted</li>
+            <li class="list-group-item @(Model.Status >= ClaimStatus.UnderReview ? "list-group-item-success" : "")">Under Review</li>
+            <li class="list-group-item @(Model.Status >= ClaimStatus.ApprovedByCoordinator ? "list-group-item-success" : "")">Approved by Coordinator</li>
+            <li class="list-group-item @(Model.Status >= ClaimStatus.ApprovedByManager ? "list-group-item-success" : "")">Approved by Manager</li>
+            <li class="list-group-item @(Model.Status == ClaimStatus.Settled ? "list-group-item-success" : "")">Settled</li>
+        </ul>
+    </div>
+</div>
