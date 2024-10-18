@@ -1,0 +1,40 @@
+﻿@model IEnumerable<Claim>
+
+<h2>Verify Claims</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Lecturer</th>
+            <th>Date Submitted</th>
+            <th>Hours Worked</th>
+            <th>Hourly Rate</th>
+            <th>Total Amount</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var claim in Model)
+        {
+            <tr>
+                <td>@claim.LecturerId</td>
+                <td>@claim.DateSubmitted.ToShortDateString()</td>
+                <td>@claim.HoursWorked</td>
+                <td>@claim.HourlyRate</td>
+                <td>@(claim.HoursWorked * claim.HourlyRate)</td>
+                <td>
+                    <form asp-action="Approve" asp-route-id="@claim.Id" style="display: inline;">
+                        <button type="submit" class="btn btn-success">Approve</button>
+                    </form>
+                    <form asp-action="Reject" asp-route-id="@claim.Id" style="display: inline;">
+                        <button type="submit" class="btn btn-danger">Reject</button>
+                    </form>
+                    @if (!string.IsNullOrEmpty(claim.SupportingDocumentPath))
+                    {
+                        <a href="@Url.Content("~/uploads/" + claim.SupportingDocumentPath)" target="_blank" class="btn btn-info">View Document</a>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
